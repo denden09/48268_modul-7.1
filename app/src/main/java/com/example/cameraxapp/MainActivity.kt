@@ -4,13 +4,18 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.video.*
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
 import androidx.core.content.ContextCompat
 import com.example.cameraxapp.databinding.ActivityMainBinding
 import java.text.SimpleDateFormat
@@ -54,11 +59,8 @@ class MainActivity : AppCompatActivity() {
         activityResultLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
-            var permissionGranted = true
-            permissions.entries.forEach {
-                if (it.key in REQUIRED_PERMISSIONS && !it.value) {
-                    permissionGranted = false
-                }
+            val permissionGranted = permissions.entries.all {
+                it.key in REQUIRED_PERMISSIONS && it.value
             }
 
             if (!permissionGranted) {
@@ -78,7 +80,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(
+            baseContext,
+            it
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun takePhoto() {
@@ -92,31 +97,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
-        // TODO: Implement camera initialization logic
-        Toast.makeText(this, "Starting camera!", Toast.LENGTH_SHORT).show()
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener({
+            // Bind lifecycle of camera to lifecycle owner
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
-            }
+            // Preview Use Case
+            val preview = Preview.Builder()
+                .build()
+                .also {
+                    it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
+                }
 
-            imageCapture = ImageCapture.Builder().build()
-
+            // Select back camera
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
+                // Unbind any previously bound use cases
                 cameraProvider.unbindAll()
 
+                // Bind preview use case to lifecycle
                 cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
+                    this, cameraSelector, preview
                 )
 
-            } catch (e: Exception) {
-                Toast.makeText(this, "Use case binding failed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Camera started successfully!", Toast.LENGTH_SHORT).show()
+
+            } catch (exc: Exception) {
+                Log.e(TAG, "Use case binding failed", exc)
+                Toast.makeText(this, "Failed to start camera!", Toast.LENGTH_SHORT).show()
             }
 
         }, ContextCompat.getMainExecutor(this))
