@@ -74,6 +74,7 @@ dependencies {
 
     // Core KTX
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation(libs.androidx.appcompat)
 
     // Tests
     testImplementation("junit:junit:4.13.2")
